@@ -42,6 +42,9 @@
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.INSTALL_DRM" />
     <uses-permission android:name="android.permission.WRITE_APN_SETTINGS" />
+    <uses-permission android:name="android.permission.CHANGE_PHONE_BLACKLIST" />
+    <uses-permission android:name="android.permission.READ_PHONE_BLACKLIST" />
+
     <!-- System apps can access the  receiver through intent-->
     <permission android:name="android.permission.MMS_SEND_OUTBOX_MSG"
                 android:protectionLevel="signatureOrSystem"
@@ -241,7 +244,7 @@
 
        <activity android:name=".ui.WwwContextMenuActivity"
             android:label="@string/message_options"
-            android:theme="@android:style/Theme.Holo.Light.Dialog"
+            android:theme="@android:style/Theme.Material.Light.Dialog"
             android:excludeFromRecents="true">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
@@ -350,7 +353,7 @@
         </activity>
 
         <activity android:name=".ui.MessageTemplate"
-                  android:theme="@android:style/Theme.Holo.Light"
+                  android:theme="@android:style/Theme.Material.Light.Dialog"
                   android:launchMode="singleTop"
                   android:label="@string/message_template_title"
                   android:configChanges="orientation|screenSize" >
@@ -455,7 +458,7 @@
              through a notification when appropriate. -->
          <activity
             android:name=".quickmessage.QuickMessagePopup"
-            android:theme="@android:style/Theme.Holo.Dialog"
+            android:theme="@android:style/Theme.Material.Dialog"
             android:configChanges="orientation|screenSize"
             android:launchMode="singleTop"
             android:taskAffinity=""
