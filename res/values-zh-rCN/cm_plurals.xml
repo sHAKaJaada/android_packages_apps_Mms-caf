@@ -23,6 +23,6 @@
     <item quantity="other">将会在 %1$d 秒内发送，点击取消发送。</item>
   </plurals>
   <plurals name="confirm_mark_unread_conversation">
-    <item quantity="other"><xliff:g id="number">%1$s</xliff:g> 条会话将被标记为已读。</item>
+    <item quantity="other"><xliff:g id="number">%1$s</xliff:g> 条会话将被标记为未读。</item>
   </plurals>
 </resources>
