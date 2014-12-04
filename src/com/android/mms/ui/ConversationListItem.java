@@ -170,12 +170,12 @@ public class ConversationListItem extends RelativeLayout implements Contact.Upda
                 } else {
                     mAvatarView.assignContactFromPhone(contact.getNumber(), true);
                 }
-                if (avatarDrawable == null) {
-                    DefaultImageRequest defaultImageRequest = new DefaultImageRequest(
-                        contact.getName(), contact.existsInDatabase() ? contact.getLookupKey() + "" : contact.getLookupKey());
-                    avatarDrawable = ContactPhotoManager.getDefaultAvatarDrawableForContact(
-                        mContext.getResources(), false, defaultImageRequest);
-                }
+            }
+            if (avatarDrawable == null) {
+                DefaultImageRequest defaultImageRequest = new DefaultImageRequest(
+                    contact.getName(), contact.existsInDatabase() ? contact.getLookupKey() + "" : contact.getLookupKey());
+                avatarDrawable = ContactPhotoManager.getDefaultAvatarDrawableForContact(
+                    mContext.getResources(), false, defaultImageRequest);
             }
         } else {
             // TODO get a multiple recipients asset (or do something else)
