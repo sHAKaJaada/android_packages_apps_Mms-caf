@@ -349,7 +349,9 @@ public class SelectRecipientsList extends ListActivity implements
         mProgressSpinner.setVisibility(View.GONE);
 
         // Create and set the list adapter
-        mListAdapter = new SelectRecipientsListAdapter(this, data);
+        if (data != null) {
+            mListAdapter = new SelectRecipientsListAdapter(this, data);
+        }
 
         if (getIntent() != null) {
             String[] initialRecipients = getIntent().getStringArrayExtra(EXTRA_RECIPIENTS);
@@ -381,7 +383,9 @@ public class SelectRecipientsList extends ListActivity implements
 
     @Override
     public void onLoaderReset(Loader<ArrayList<RecipientsListLoader.Result>> data) {
-        mListAdapter.notifyDataSetInvalidated();
+        if (mListAdapter != null) {
+            mListAdapter.notifyDataSetInvalidated();
+        }
     }
 
     private void putExtraWithContact(Intent intent) {
