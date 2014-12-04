@@ -45,6 +45,9 @@ import com.android.mms.util.SmileyParser;
 import org.mokee.location.PhoneLocation;
 import org.mokee.util.MoKeeUtils;
 
+import com.android.contacts.common.ContactPhotoManager;
+import com.android.contacts.common.ContactPhotoManager.DefaultImageRequest;
+
 /**
  * This class manages the view for given conversation.
  */
@@ -153,7 +156,7 @@ public class ConversationListItem extends RelativeLayout implements Contact.Upda
         Drawable avatarDrawable;
         if (mConversation.getRecipients().size() == 1) {
             Contact contact = mConversation.getRecipients().get(0);
-            avatarDrawable = contact.getAvatar(mContext, sDefaultContactImage);
+            avatarDrawable = contact.getAvatar(mContext, null);
 
             if (contact.existsInDatabase()) {
                 mAvatarView.assignContactUri(contact.getUri());
@@ -166,11 +169,20 @@ public class ConversationListItem extends RelativeLayout implements Contact.Upda
                             MessageUtils.getWapPushNumber(contact.getNumber()), true);
                 } else {
                     mAvatarView.assignContactFromPhone(contact.getNumber(), true);
-               }
+                }
+                if (avatarDrawable == null) {
+                    DefaultImageRequest defaultImageRequest = new DefaultImageRequest(
+                        contact.getName(), contact.existsInDatabase() ? contact.getLookupKey() + "" : contact.getLookupKey());
+                    avatarDrawable = ContactPhotoManager.getDefaultAvatarDrawableForContact(
+                        mContext.getResources(), false, defaultImageRequest);
+                }
             }
         } else {
             // TODO get a multiple recipients asset (or do something else)
-            avatarDrawable = sDefaultContactImage;
+            String multiKey = mConversation.getRecipients().formatNames(", ");
+            DefaultImageRequest defaultImageRequest = new DefaultImageRequest(null, multiKey);
+            avatarDrawable = ContactPhotoManager.getDefaultAvatarDrawableForContact(
+                mContext.getResources(), false, defaultImageRequest);
             mAvatarView.assignContactUri(null);
         }
         mAvatarView.setImageDrawable(avatarDrawable);

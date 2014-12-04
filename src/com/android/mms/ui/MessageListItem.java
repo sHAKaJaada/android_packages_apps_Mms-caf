@@ -95,6 +95,9 @@ import com.google.android.mms.pdu.NotificationInd;
 import com.google.android.mms.pdu.PduHeaders;
 import com.google.android.mms.pdu.PduPersister;
 
+import com.android.contacts.common.ContactPhotoManager;
+import com.android.contacts.common.ContactPhotoManager.DefaultImageRequest;
+
 /**
  * This class provides view of a message in the messages list.
  */
@@ -449,7 +452,7 @@ public class MessageListItem extends LinearLayout implements
         Drawable avatarDrawable;
         if (isSelf || !TextUtils.isEmpty(addr)) {
             Contact contact = isSelf ? Contact.getMe(false) : Contact.get(addr, true);
-            avatarDrawable = contact.getAvatar(mContext, sDefaultContactImage);
+            avatarDrawable = contact.getAvatar(mContext, null);
 
             if (isSelf) {
                 mAvatar.assignContactUri(Profile.CONTENT_URI);
@@ -462,6 +465,12 @@ public class MessageListItem extends LinearLayout implements
                 } else {
                     mAvatar.assignContactFromPhone(contact.getNumber(), true);
                 }
+            }
+            if (avatarDrawable == null) {
+                DefaultImageRequest defaultImageRequest = new DefaultImageRequest(
+                    contact.getName(), contact.existsInDatabase() ? contact.getLookupKey() + "" : contact.getLookupKey());
+                avatarDrawable = ContactPhotoManager.getDefaultAvatarDrawableForContact(
+                    mContext.getResources(), false, defaultImageRequest);
             }
         } else {
             avatarDrawable = sDefaultContactImage;

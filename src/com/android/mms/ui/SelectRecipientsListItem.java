@@ -36,6 +36,9 @@ import com.android.mms.data.Contact;
 import com.android.mms.data.Group;
 import com.android.mms.data.PhoneNumber;
 
+import com.android.contacts.common.ContactPhotoManager;
+import com.android.contacts.common.ContactPhotoManager.DefaultImageRequest;
+
 public class SelectRecipientsListItem extends LinearLayout implements Contact.UpdateListener {
 
     private static Drawable sDefaultContactImage;
@@ -101,14 +104,19 @@ public class SelectRecipientsListItem extends LinearLayout implements Contact.Up
             return;
         }
 
-        Drawable avatarDrawable = mContact.getAvatar(mContext, sDefaultContactImage);
+        Drawable avatarDrawable = mContact.getAvatar(mContext, null);
 
         if (mContact.existsInDatabase()) {
             mAvatarView.assignContactUri(mContact.getUri());
         } else {
             mAvatarView.assignContactFromPhone(mContact.getNumber(), true);
         }
-
+        if (avatarDrawable == null) {
+            DefaultImageRequest defaultImageRequest = new DefaultImageRequest(
+                    mContact.getName(), mContact.existsInDatabase() ? mContact.getLookupKey() + "" : mContact.getLookupKey());
+            avatarDrawable = ContactPhotoManager.getDefaultAvatarDrawableForContact(
+                    getContext().getResources(), false, defaultImageRequest);
+        }
         mAvatarView.setImageDrawable(avatarDrawable);
         mAvatarView.setVisibility(View.VISIBLE);
     }
