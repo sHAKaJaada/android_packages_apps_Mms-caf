@@ -88,6 +88,12 @@ public class MessagingPreferenceActivity extends PreferenceActivity
     private final static int MAX_SIGNATURE_LENGTH = 64;
     public static final String ENABLE_EMOTICONS         = "pref_key_enable_emoticons";
 
+    // Direct call
+    public static final String DIRECT_CALL              = "pref_key_mms_direct_call";
+
+    // Custom font size
+    public static final String MESSAGE_FONT_SIZE        = "pref_key_mms_message_font_size";
+
     // Unicode
     public static final String UNICODE_STRIPPING            = "pref_key_unicode_stripping";
     public static final String UNICODE_STRIPPING_VALUE      = "pref_key_unicode_stripping_value";
@@ -164,6 +170,9 @@ public class MessagingPreferenceActivity extends PreferenceActivity
     private CheckBoxPreference mSmsSignaturePref;
     private EditTextPreference mSmsSignatureEditPref;
     private static final int CONFIRM_CLEAR_SEARCH_HISTORY_DIALOG = 3;
+
+    // DirectCall
+    private CheckBoxPreference mDirectCall;
 
     // Templates
     private Preference mManageTemplate;
@@ -317,6 +326,7 @@ public class MessagingPreferenceActivity extends PreferenceActivity
         mMmsReadReportPref = findPreference("pref_key_mms_read_reports");
         mMmsLimitPref = findPreference("pref_key_mms_delete_limit");
         mClearHistoryPref = findPreference("pref_key_mms_clear_history");
+        mDirectCall = (CheckBoxPreference) findPreference(DIRECT_CALL);
         mEnableNotificationsPref = (CheckBoxPreference) findPreference(NOTIFICATION_ENABLED);
         mMmsAutoRetrievialPref = (CheckBoxPreference) findPreference(AUTO_RETRIEVAL);
         mEnablePrivacyModePref = (CheckBoxPreference) findPreference(PRIVACY_MODE_ENABLED);
@@ -820,6 +830,12 @@ public class MessagingPreferenceActivity extends PreferenceActivity
         editor.putBoolean(MessagingPreferenceActivity.NOTIFICATION_ENABLED, enabled);
 
         editor.apply();
+    }
+
+    public static boolean getDirectCallEnabled(Context context) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        boolean directCallEnabled = prefs.getBoolean(MessagingPreferenceActivity.DIRECT_CALL,false);
+        return directCallEnabled;
     }
 
     public static boolean getPrivacyModeEnabled(Context context) {

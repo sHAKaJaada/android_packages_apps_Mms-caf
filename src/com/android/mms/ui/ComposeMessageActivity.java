@@ -60,6 +60,7 @@ import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.LoaderManager;
 import android.app.ProgressDialog;
+import android.app.Service;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.ClipData;
@@ -87,6 +88,10 @@ import android.gesture.GestureOverlayView;
 import android.gesture.GestureOverlayView.OnGesturePerformedListener;
 import android.gesture.Prediction;
 import android.graphics.drawable.Drawable;
+import android.hardware.SensorEventListener;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorManager;
 import android.media.RingtoneManager;
 import android.media.MediaFile;
 import android.net.Uri;
@@ -408,6 +413,16 @@ public class ComposeMessageActivity extends Activity
     private long mTempThreadId;         // Only used as a temporary to hold a threadId
 
     private AsyncDialog mAsyncDialog;   // Used for background tasks.
+
+    // Direct call
+    private SensorManager mSensorManager;
+    private Sensor mProximitySensor;
+    private Sensor mAccelerometer;
+    private Sensor mMagnetometer;
+    private int SensorOrientationY;
+    private int SensorProximity;
+    private boolean initProx;
+    private boolean proxChanged;
 
     private String mDebugRecipients;
 
@@ -2445,6 +2460,82 @@ public class ComposeMessageActivity extends Activity
         }
     }
 
+    private void registerSensorListener(Sensor sensor) {
+        if (sensor != null)
+            mSensorManager.registerListener(mSensorListener, sensor, SensorManager.SENSOR_DELAY_UI);
+    }
+
+    private void unregisterSensorListener(Sensor sensor) {
+        if (sensor != null)
+            mSensorManager.unregisterListener(mSensorListener, sensor);
+    }
+
+    private SensorEventListener mSensorListener = new SensorEventListener() {
+        float[] mGravity;
+        float[] mGeomagnetic;
+
+        @Override
+        public void onSensorChanged(SensorEvent event) {
+            float value = event.values[0];
+            if (event.sensor.equals(mProximitySensor)) {
+                int currentProx = (int) value;
+                if (initProx) {
+                    SensorProximity = currentProx;
+                    initProx = false;
+                } else {
+                    if( SensorProximity > 0 && currentProx <= 3){
+                        proxChanged = true;
+                    }
+                }
+                SensorProximity = currentProx;
+            } else if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+                mGravity = event.values;
+            } else if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
+                mGeomagnetic = event.values;
+            }
+            if (mGravity != null && mGeomagnetic != null) {
+                float R[] = new float[9];
+                float I[] = new float[9];
+                boolean success = SensorManager.getRotationMatrix(R, I, mGravity, mGeomagnetic);
+                if (success) {
+                    float orientation[] = new float[3];
+                    SensorManager.getOrientation(R, orientation);
+                    SensorOrientationY = (int) (orientation[1] * 180f / Math.PI);
+                }
+            }
+            if (rightOrientation(SensorOrientationY) && SensorProximity <= 3 && proxChanged ) {
+                if (getRecipients().isEmpty() == false) {
+                    // unregister Listener to don't let the onSesorChanged run the
+                    // whole time
+                    unregisterSensorListener(mProximitySensor);
+                    unregisterSensorListener(mAccelerometer);
+                    unregisterSensorListener(mMagnetometer);
+
+                    // get number and attach it to an Intent.ACTION_CALL, then start
+                    // the Intent
+                    String number = getRecipients().get(0).getNumber();
+                    Intent dialIntent = new Intent(Intent.ACTION_CALL);
+                    dialIntent.setData(Uri.fromParts("tel", number, null));
+                    dialIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(dialIntent);
+                }
+            }
+        }
+
+        @Override
+        public void onAccuracyChanged(Sensor sensor, int accuracy) {
+
+        }
+    };
+
+    public boolean rightOrientation(int orientation) {
+        if (orientation < -50 && orientation > -130) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     private void showSubjectEditor(boolean show) {
         if (Log.isLoggable(LogTag.APP, Log.VERBOSE)) {
             log("" + show);
@@ -2878,6 +2969,25 @@ public class ComposeMessageActivity extends Activity
             }
         }, 100);
 
+        try {
+            TelephonyManager tm = (TelephonyManager)getSystemService(Service.TELEPHONY_SERVICE);
+            if (MessagingPreferenceActivity.getDirectCallEnabled(this) && tm.getCallState() == TelephonyManager.CALL_STATE_IDLE) {
+                mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
+                mProximitySensor = mSensorManager.getDefaultSensor(Sensor.TYPE_PROXIMITY);
+                mAccelerometer = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+                mMagnetometer = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+                SensorOrientationY = 0;
+                SensorProximity = 0;
+                proxChanged = false;
+                initProx = true;
+                registerSensorListener(mProximitySensor);
+                registerSensorListener(mAccelerometer);
+                registerSensorListener(mMagnetometer);
+            }
+        } catch (Exception e) {
+            Log.w("ERROR", e.toString());
+        }
+
         // Load the selected input type
         SharedPreferences prefs = PreferenceManager
                 .getDefaultSharedPreferences((Context) ComposeMessageActivity.this);
@@ -2924,6 +3034,16 @@ public class ComposeMessageActivity extends Activity
         //Contact.stopPresenceObserver();
 
         removeRecipientsListeners();
+
+        try {
+            if (MessagingPreferenceActivity.getDirectCallEnabled(this)) {
+                unregisterSensorListener(mProximitySensor);
+                unregisterSensorListener(mAccelerometer);
+                unregisterSensorListener(mMagnetometer);
+            }
+        } catch (Exception e) {
+            Log.w("ERROR", e.toString());
+        }
 
         // remove any callback to display a progress spinner
         if (mAsyncDialog != null) {
@@ -6049,6 +6169,8 @@ public class ComposeMessageActivity extends Activity
                 int count = mMsgListView.getChildCount();
                 for (int i = 0; i < count; i++) {
                     MessageListItem v = (MessageListItem) mMsgListView.getChildAt(i);
+                    if (v == null)
+                        break;
                     MessageItem listItem = v.getMessageItem();
                     if (item.equals(listItem)) {
                         v.updateDelayCountDown();
