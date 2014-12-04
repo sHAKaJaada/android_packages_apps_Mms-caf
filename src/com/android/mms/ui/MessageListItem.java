@@ -176,10 +176,10 @@ public class MessageListItem extends LinearLayout implements
         super.onFinishInflate();
 
         mBodyTopTextView = (TextView) findViewById(R.id.text_view_top);
-		mBodyTopTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(getContext()).getString(MessagingPreferenceActivity.MESSAGE_FONT_SIZE, "18")));
+        mBodyTopTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(getContext()).getString(MessagingPreferenceActivity.MESSAGE_FONT_SIZE, "18")));
         mBodyTopTextView.setVisibility(View.GONE);
         mBodyButtomTextView = (TextView) findViewById(R.id.text_view_buttom);
-		mBodyButtomTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(getContext()).getString(MessagingPreferenceActivity.MESSAGE_FONT_SIZE, "18")));
+        mBodyButtomTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, Integer.parseInt(PreferenceManager.getDefaultSharedPreferences(getContext()).getString(MessagingPreferenceActivity.MESSAGE_FONT_SIZE, "18")));
         mBodyButtomTextView.setVisibility(View.GONE);
         mDateView = (TextView) findViewById(R.id.date_view);
         mLockedIndicator = (ImageView) findViewById(R.id.locked_indicator);
