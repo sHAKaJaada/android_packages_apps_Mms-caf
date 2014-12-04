@@ -365,7 +365,7 @@ public class QuickMessagePopup extends Activity implements
 
         // Add to Blacklist item (if enabled) and we are running on CyanogenMod
         // This allows the app to be run on non-blacklist enabled roms (including Stock)
-        if (MessageUtils.isCyanogenMod(this)) {
+        if (MessageUtils.isMoKee(this)) {
             if (BlacklistUtils.isBlacklistEnabled(this)) {
                 menu.add(0, MENU_ADD_TO_BLACKLIST, 0, R.string.add_to_blacklist)
                         .setIcon(R.drawable.ic_block_message_holo_dark)

@@ -349,7 +349,7 @@ public class MessagingPreferenceActivity extends PreferenceActivity
 
         // Remove the Blacklist item if we are not running on CyanogenMod
         // This allows the app to be run on non-blacklist enabled roms (including Stock)
-        if (!MessageUtils.isCyanogenMod(this)) {
+        if (!MessageUtils.isMoKee(this)) {
             PreferenceCategory extraCategory = (PreferenceCategory) findPreference("pref_key_extra_settings");
             extraCategory.removePreference(mBlacklist);
             mBlacklist = null;
