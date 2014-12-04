@@ -38,7 +38,6 @@ import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Handler;
 import android.os.Message;
-import android.preference.PreferenceManager;
 import android.provider.Browser;
 import android.provider.ContactsContract.Profile;
 import android.provider.Telephony.Sms;
@@ -58,7 +57,6 @@ import android.text.style.TextAppearanceSpan;
 import android.text.style.URLSpan;
 import android.util.AttributeSet;
 import android.util.Log;
-import android.util.TypedValue;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
@@ -176,8 +174,6 @@ public class MessageListItem extends LinearLayout implements
         super.onFinishInflate();
 
         mBodyTopTextView = (TextView) findViewById(R.id.text_view_top);
-        mBodyTopTextView.setTextSize(TypedValue.COMPLEX_UNIT_SP, Integer.parseInt(
-            PreferenceManager.getDefaultSharedPreferences(getContext()).getString(MessagingPreferenceActivity.MESSAGE_FONT_SIZE, "18")));
         mBodyTopTextView.setVisibility(View.GONE);
         mBodyButtomTextView = (TextView) findViewById(R.id.text_view_buttom);
         mBodyButtomTextView.setVisibility(View.GONE);
