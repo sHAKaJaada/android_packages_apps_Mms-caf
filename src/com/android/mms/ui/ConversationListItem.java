@@ -42,10 +42,6 @@ import com.android.mms.R;
 import com.android.mms.data.Contact;
 import com.android.mms.data.ContactList;
 import com.android.mms.data.Conversation;
-
-import com.android.mms.ContactPhotoManager;
-import com.android.mms.ContactPhotoManager.DefaultImageRequest;
-
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -66,6 +62,8 @@ public class ConversationListItem extends RelativeLayout implements Contact.Upda
     private View mErrorIndicator;
     private QuickContactBadge mAvatarView;
 
+    static private Drawable sDefaultContactImage;
+
     // For posting UI update Runnables from other threads:
     private Handler mHandler = new Handler();
 
@@ -79,6 +77,10 @@ public class ConversationListItem extends RelativeLayout implements Contact.Upda
 
     public ConversationListItem(Context context, AttributeSet attrs) {
         super(context, attrs);
+
+        if (sDefaultContactImage == null) {
+            sDefaultContactImage = context.getResources().getDrawable(R.drawable.ic_contact_picture);
+        }
     }
 
     @Override
@@ -204,7 +206,7 @@ public class ConversationListItem extends RelativeLayout implements Contact.Upda
         Drawable avatarDrawable;
         if (mConversation.getRecipients().size() == 1) {
             Contact contact = mConversation.getRecipients().get(0);
-            avatarDrawable = contact.getAvatar(mContext, null);
+            avatarDrawable = contact.getAvatar(mContext, sDefaultContactImage);
 
             if (contact.existsInDatabase()) {
                 mAvatarView.assignContactUri(contact.getUri());
@@ -214,18 +216,9 @@ public class ConversationListItem extends RelativeLayout implements Contact.Upda
             } else {
                 mAvatarView.assignContactFromPhone(contact.getNumber(), true);
             }
-            if (avatarDrawable == null) {
-                DefaultImageRequest defaultImageRequest = new DefaultImageRequest(
-                    contact.getName(), contact.existsInDatabase() ? contact.getLookupKey() + "" : contact.getLookupKey(), false);
-                avatarDrawable = ContactPhotoManager.getDefaultAvatarDrawableForContact(
-                    mContext.getResources(), false, defaultImageRequest);
-            }
         } else {
             // TODO get a multiple recipients asset (or do something else)
-            String multiKey = mConversation.getRecipients().formatNames(", ");
-            DefaultImageRequest defaultImageRequest = new DefaultImageRequest(null, multiKey, false);
-            avatarDrawable = ContactPhotoManager.getDefaultAvatarDrawableForContact(
-                mContext.getResources(), false, defaultImageRequest);
+            avatarDrawable = sDefaultContactImage;
             mAvatarView.assignContactUri(null);
         }
         mAvatarView.setImageDrawable(avatarDrawable);
@@ -278,8 +271,8 @@ public class ConversationListItem extends RelativeLayout implements Contact.Upda
         // Register for updates in changes of any of the contacts in this conversation.
         ContactList contacts = conversation.getRecipients();
 
-        // Location
-        if (MoKeeUtils.isSupportLanguage(true)) {
+        //Location
+        if (MoKeeUtils.isChineseLanguage(true)) {
             mLocationView.setText(PhoneLocation.getCityFromPhone((CharSequence)contacts.get(0).getNumber()));
         }
 

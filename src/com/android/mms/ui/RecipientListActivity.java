@@ -43,9 +43,6 @@ import com.android.mms.data.Contact;
 import com.android.mms.data.ContactList;
 import com.android.mms.data.Conversation;
 
-import com.android.mms.ContactPhotoManager;
-import com.android.mms.ContactPhotoManager.DefaultImageRequest;
-
 /**
  * Display a list of recipients for a group conversation. This activity expects to receive a
  * threadId in the intent's extras.
@@ -117,6 +114,7 @@ public class RecipientListActivity extends ListActivity {
     private static class RecipientListAdapter extends ArrayAdapter<Contact> {
         private final int mResourceId;
         private final LayoutInflater mInflater;
+        private final Drawable mDefaultContactImage;
 
         public RecipientListAdapter(Context context, int resource,
                 ContactList recipients) {
@@ -124,6 +122,8 @@ public class RecipientListActivity extends ListActivity {
 
             mResourceId = resource;
             mInflater = LayoutInflater.from(context);
+            mDefaultContactImage =
+                    context.getResources().getDrawable(R.drawable.ic_contact_picture);
         }
 
         @Override
@@ -150,13 +150,7 @@ public class RecipientListActivity extends ListActivity {
             } else {
                 badge.assignContactFromPhone(contact.getNumber(), true);
             }
-            Drawable avatarDrawable = contact.getAvatar(getContext(), null);
-            if (avatarDrawable == null) {
-                DefaultImageRequest defaultImageRequest = new DefaultImageRequest(
-                        contact.getName(), contact.existsInDatabase() ? contact.getLookupKey() + "" : contact.getLookupKey(), false);
-                avatarDrawable = ContactPhotoManager.getDefaultAvatarDrawableForContact(
-                        getContext().getResources(), false, defaultImageRequest);
-            }
+            final Drawable avatarDrawable = contact.getAvatar(getContext(), mDefaultContactImage);
             badge.setImageDrawable(avatarDrawable);
 
             return listItemView;

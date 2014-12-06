@@ -96,9 +96,6 @@ import com.google.android.mms.pdu.NotificationInd;
 import com.google.android.mms.pdu.PduHeaders;
 import com.google.android.mms.pdu.PduPersister;
 
-import com.android.mms.ContactPhotoManager;
-import com.android.mms.ContactPhotoManager.DefaultImageRequest;
-
 /**
  * This class provides view of a message in the messages list.
  */
@@ -408,7 +405,7 @@ public class MessageListItem extends ZoomMessageListItem implements
         Drawable avatarDrawable;
         if (isSelf || !TextUtils.isEmpty(addr)) {
             Contact contact = isSelf ? Contact.getMe(false) : Contact.get(addr, false);
-            avatarDrawable = contact.getAvatar(mContext, null);
+            avatarDrawable = contact.getAvatar(mContext, sDefaultContactImage);
 
             if (isSelf) {
                 mAvatar.assignContactUri(Profile.CONTENT_URI);
@@ -421,12 +418,6 @@ public class MessageListItem extends ZoomMessageListItem implements
                 } else {
                     mAvatar.assignContactFromPhone(contact.getNumber(), true);
                 }
-            }
-            if (avatarDrawable == null) {
-                DefaultImageRequest defaultImageRequest = new DefaultImageRequest(
-                    contact.getName(), contact.existsInDatabase() ? contact.getLookupKey() + "" : contact.getLookupKey(), false);
-                avatarDrawable = ContactPhotoManager.getDefaultAvatarDrawableForContact(
-                    mContext.getResources(), false, defaultImageRequest);
             }
         } else {
             avatarDrawable = sDefaultContactImage;
