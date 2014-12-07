@@ -55,8 +55,12 @@ import java.util.regex.Pattern;
 import java.util.Set;
 
 import android.R.integer;
+import android.animation.AnimatorSet;
+import android.animation.ArgbEvaluator;
+import android.animation.ObjectAnimator;
 import android.app.ActionBar;
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.ProgressDialog;
@@ -74,10 +78,12 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.res.Configuration;
 import android.content.res.Resources;
+import android.content.res.TypedArray;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteException;
 import android.database.sqlite.SqliteWrapper;
 import android.drm.DrmStore;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.media.RingtoneManager;
 import android.net.Uri;
@@ -143,8 +149,11 @@ import android.widget.ListView;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
 import android.widget.Toast;
+import android.widget.Toolbar;
 import android.widget.Button;
 
+import com.android.contacts.common.util.MaterialColorMapUtils;
+import com.android.contacts.common.util.MaterialColorMapUtils.MaterialPalette;
 import com.android.internal.telephony.PhoneConstants;
 import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.TelephonyIntents;
@@ -168,7 +177,6 @@ import com.android.mms.transaction.MessagingNotification;
 import com.android.mms.transaction.SmsReceiverService;
 import com.android.mms.ui.MessageListView.OnSizeChangedListener;
 import com.android.mms.ui.MessageUtils.ResizeImageResultCallback;
-import com.android.mms.ui.MultiPickContactGroups;
 import com.android.mms.ui.RecipientsEditor.RecipientContextMenuInfo;
 import com.android.mms.ui.zoom.ZoomGestureOverlayView;
 import com.android.mms.ui.zoom.ZoomGestureOverlayView.IZoomListener;
@@ -215,6 +223,7 @@ public class ComposeMessageActivity extends Activity
     public static final int REQUEST_CODE_ATTACH_ADD_CONTACT_INFO     = 110;
     public static final int REQUEST_CODE_ATTACH_ADD_CONTACT_VCARD    = 111;
     public static final int REQUEST_CODE_ATTACH_REPLACE_CONTACT_INFO = 112;
+    public static final int REQUEST_CODE_ADD_RECIPIENTS   = 113;
 
     private static final String TAG = LogTag.TAG;
 
@@ -284,7 +293,6 @@ public class ComposeMessageActivity extends Activity
     protected static final String KEY_FORWARDED_MESSAGE = "forwarded_message";
     protected static final String KEY_REPLY_MESSAGE = "reply_message";
 
-
     private static final String EXIT_ECM_RESULT = "exit_ecm_result";
 
     private static final String INTENT_MULTI_PICK = "com.android.contacts.action.MULTI_PICK";
@@ -329,6 +337,7 @@ public class ComposeMessageActivity extends Activity
     private boolean mForwardMessageMode;
     private boolean mReplyMessageMode;
 
+    private Toolbar mToolBar;
     private View mTopPanel;                 // View containing the recipient and subject editors
     private View mBottomPanel;              // View containing the text editor, send button, ec.
     private EditText mTextEditor;           // Text editor to type your message into
@@ -354,9 +363,7 @@ public class ComposeMessageActivity extends Activity
     public MessageListAdapter mMsgListAdapter;  // and its corresponding ListAdapter
 
     private RecipientsEditor mRecipientsEditor;  // UI control for editing recipients
-    private ImageButton mRecipientsPicker;       // UI control for recipients picker
-    private ImageButton mRecipientsPickerGroups; // UI control for group recipients picker
-
+    private View mRecipientsSelector;            // UI control for recipients selector
 
     // For HW keyboard, 'mIsKeyboardOpen' indicates if the HW keyboard is open.
     // For SW keyboard, 'mIsKeyboardOpen' should always be true.
@@ -466,6 +473,11 @@ public class ComposeMessageActivity extends Activity
 
     private boolean mShowTwoButtons = false;
 
+    private int mAccentColor = 0;
+    private int mStatusBarColor = 0;
+    private boolean mAccentColorLoaded = false;
+    private boolean mLoadingAccentColor = false;
+
     @SuppressWarnings("unused")
     public static void log(String logMsg) {
         Thread current = Thread.currentThread();
@@ -513,8 +525,13 @@ public class ComposeMessageActivity extends Activity
     }
 
     private void pickContacts(int mode, int requestCode) {
-        Intent intent = new Intent(this, MultiPickContactsActivity.class);
-        intent.putExtra(MultiPickContactsActivity.MODE, mode);
+        Intent intent = new Intent(ComposeMessageActivity.this, SelectRecipientsList.class);
+        if (mRecipientsEditor == null) {
+            initRecipientsEditor();
+        }
+        ContactList contacts = mRecipientsEditor.constructContactsFromInput(false);
+        intent.putExtra(SelectRecipientsList.EXTRA_RECIPIENTS, contacts.getNumbers());
+        intent.putExtra(SelectRecipientsList.MODE, mode);
         startActivityForResult(intent, requestCode);
     }
 
@@ -541,7 +558,6 @@ public class ComposeMessageActivity extends Activity
                          viewMmsMessageAttachment(msg.what);
                     }
                     break;
-
                 case AttachmentEditor.MSG_REPLACE_IMAGE:
                 case AttachmentEditor.MSG_REPLACE_VIDEO:
                 case AttachmentEditor.MSG_REPLACE_AUDIO:
@@ -1101,7 +1117,6 @@ public class ComposeMessageActivity extends Activity
             mWorkingMessage.setHasEmail(mRecipientsEditor.containsEmail(), true);
 
             checkForTooManyRecipients();
-
             // If pick recipients from Contacts,
             // then only update title once when process finished
             if (mIsProcessPickedRecipients) {
@@ -1828,27 +1843,19 @@ public class ComposeMessageActivity extends Activity
                     title = mTitle[getResources().getInteger(R.integer.wap_push_address_index)];
                 }
 
+                String formattedNumber = PhoneNumberUtils.formatNumber(number, number,
+                        MmsApp.getApplication().getCurrentCountryIso());
                 if (mTextCounter.isLayoutRtl()) {
-
                     // Change the phonenumber display normally for RTL.
-                    if (title.equals(number)) {
-                        title = PhoneNumberUtils.formatNumber(number, number,
-                             MmsApp.getApplication().getCurrentCountryIso());
-                             if (title.charAt(0) != '\u202D') {
-                                 title = '\u202D' + title + '\u202C';
-                             }
-                    } else {
-                        subTitle = PhoneNumberUtils.formatNumber(number, number,
-                                MmsApp.getApplication().getCurrentCountryIso());
-                            if (subTitle.charAt(0) != '\u202D') {
-                                subTitle = '\u202D' + subTitle + '\u202C';
-                            }
+                    if (formattedNumber.charAt(0) != '\u202D') {
+                        formattedNumber = '\u202D' + formattedNumber + '\u202C';
                     }
+                }
+
+                if (title.equals(number)) {
+                    title = formattedNumber;
                 } else {
-                     if (!title.equals(number)) {
-                         subTitle = PhoneNumberUtils.formatNumber(number, number,
-                              MmsApp.getApplication().getCurrentCountryIso());
-                     }
+                    subTitle = formattedNumber;
                 }
                 break;
             }
@@ -1861,11 +1868,102 @@ public class ComposeMessageActivity extends Activity
         }
         mDebugRecipients = list.serialize();
 
+        if (cnt > 0 && !mAccentColorLoaded && !mLoadingAccentColor) {
+            final Contact contact = list.get(0);
+            // first see whether there's a cached color already
+            int color = contact.getAccentColor(this, false);
+            if (color != 0) {
+                mAccentColorLoaded = true;
+                updateColorPalette(color);
+            } else {
+                mLoadingAccentColor = true;
+                new AsyncTask<Void, Void, Integer>() {
+                    @Override
+                    protected Integer doInBackground(Void... params) {
+                        return contact.getAccentColor(ComposeMessageActivity.this, true);
+                    }
+
+                    @Override
+                    protected void onPostExecute(Integer color) {
+                        if (mLoadingAccentColor) {
+                            mLoadingAccentColor = false;
+                            mAccentColorLoaded = true;
+                            updateColorPalette(color);
+                        }
+                    }
+                }.execute();
+            }
+        } else if (cnt == 0) {
+            mLoadingAccentColor = false;
+            if (mAccentColorLoaded) {
+                mAccentColorLoaded = false;
+                updateAccentColorFromTheme(false);
+            }
+        }
+
         // the cnt is already be added recipients count
         mExistsRecipientsCount = cnt;
-        ActionBar actionBar = getActionBar();
-        actionBar.setTitle(title);
-        actionBar.setSubtitle(subTitle);
+        mToolBar.setTitle(title);
+        mToolBar.setSubtitle(subTitle);
+    }
+
+    private void updateColorPalette(int color) {
+        MaterialPalette palette = determinePalette(color);
+        updateThemeColors(palette.mPrimaryColor, palette.mSecondaryColor);
+
+        mAccentColor = palette.mPrimaryColor;
+        mStatusBarColor = palette.mSecondaryColor;
+    }
+
+    private MaterialPalette determinePalette(int color) {
+        final Resources res = getResources();
+        if (color != 0) {
+            MaterialColorMapUtils mcmu = new MaterialColorMapUtils(res);
+            return mcmu.calculatePrimaryAndSecondaryColor(color);
+        }
+        return MaterialColorMapUtils.getDefaultPrimaryAndSecondaryColors(res);
+    }
+
+    private void updateAccentColorFromTheme(boolean loadOnly) {
+        Resources.Theme theme = getTheme();
+        if (theme == null) {
+            return;
+        }
+
+        TypedArray a = theme.obtainStyledAttributes(android.R.styleable.Theme);
+        int colorPrimary = a.getColor(android.R.styleable.Theme_colorPrimary, 0);
+        int colorPrimaryDark = a.getColor(android.R.styleable.Theme_colorPrimaryDark, 0);
+        a.recycle();
+        if (colorPrimary != 0 && colorPrimaryDark != 0) {
+            if (!loadOnly) {
+                updateThemeColors(colorPrimary, colorPrimaryDark);
+            }
+            mAccentColor = colorPrimary;
+            mStatusBarColor = colorPrimaryDark;
+        }
+    }
+
+    private void updateThemeColors(int accentColor, int statusBarColor) {
+        final ColorDrawable background = new ColorDrawable();
+        final ObjectAnimator backgroundAnimation = ObjectAnimator.ofInt(background,
+                "color", mAccentColor, accentColor);
+        final ObjectAnimator statusBarAnimation = ObjectAnimator.ofInt(getWindow(),
+                "statusBarColor", mStatusBarColor, statusBarColor);
+
+        backgroundAnimation.setEvaluator(new ArgbEvaluator());
+        statusBarAnimation.setEvaluator(new ArgbEvaluator());
+        findViewById(R.id.header).setBackground(background);
+
+        final AnimatorSet animation = new AnimatorSet();
+        animation.playTogether(backgroundAnimation, statusBarAnimation);
+        animation.setDuration(isResumed() ? 200 : 0);
+        animation.start();
+
+        if (mMsgListAdapter != null) {
+            mMsgListAdapter.setAccentColor(accentColor);
+        }
+
+        setTaskDescription(new ActivityManager.TaskDescription(null, null, accentColor));
     }
 
     // Get the recipients editor ready to be displayed onscreen.
@@ -1881,19 +1979,14 @@ public class ComposeMessageActivity extends Activity
         if (stub != null) {
             View stubView = stub.inflate();
             mRecipientsEditor = (RecipientsEditor) stubView.findViewById(R.id.recipients_editor);
-            mRecipientsPicker = (ImageButton) stubView.findViewById(R.id.recipients_picker);
-            mRecipientsPickerGroups= (ImageButton) stubView
-                    .findViewById(R.id.recipients_picker_group);
         } else {
             mRecipientsEditor = (RecipientsEditor)findViewById(R.id.recipients_editor);
             mRecipientsEditor.setVisibility(View.VISIBLE);
-            mRecipientsPicker = (ImageButton)findViewById(R.id.recipients_picker);
-            mRecipientsPicker.setVisibility(View.VISIBLE);
-            mRecipientsPickerGroups= (ImageButton)findViewById(R.id.recipients_picker_group);
-            mRecipientsPickerGroups.setVisibility(View.VISIBLE);
         }
-        mRecipientsPicker.setOnClickListener(this);
-        mRecipientsPickerGroups.setOnClickListener(this);
+        mRecipientsSelector = findViewById(R.id.recipients_selector);
+        mRecipientsSelector.setVisibility(View.VISIBLE);
+
+        mRecipientsSelector.setOnClickListener(this);
 
         mRecipientsEditor.setAdapter(new ChipsRecipientAdapter(this));
         mRecipientsEditor.populate(recipients);
@@ -1966,6 +2059,7 @@ public class ComposeMessageActivity extends Activity
         mContentResolver = getContentResolver();
         mBackgroundQueryHandler = new BackgroundQueryHandler(mContentResolver);
 
+        updateAccentColorFromTheme(true);
         initialize(savedInstanceState, 0);
 
         if (TRACE) {
@@ -2688,11 +2782,8 @@ public class ComposeMessageActivity extends Activity
         if (mRecipientsEditor != null) {
             mRecipientsEditor.removeTextChangedListener(mRecipientsWatcher);
             mRecipientsEditor.setVisibility(View.GONE);
-            if (mRecipientsPicker != null) {
-                mRecipientsPicker.setVisibility(View.GONE);
-            }
-            if (mRecipientsPickerGroups != null) {
-                mRecipientsPickerGroups.setVisibility(View.GONE);
+            if (mRecipientsSelector != null) {
+                mRecipientsSelector.setVisibility(View.GONE);
             }
             hideOrShowTopPanel();
         }
@@ -3299,13 +3390,12 @@ public class ComposeMessageActivity extends Activity
                 break;
 
             case AttachmentTypeSelectorAdapter.ADD_CONTACT_AS_TEXT:
-                pickContacts(MultiPickContactsActivity.MODE_INFO,
-                        replace ? REQUEST_CODE_ATTACH_REPLACE_CONTACT_INFO
-                                : REQUEST_CODE_ATTACH_ADD_CONTACT_INFO);
+                pickContacts(SelectRecipientsList.MODE_INFO,
+                        REQUEST_CODE_ATTACH_ADD_CONTACT_INFO);
                 break;
 
             case AttachmentTypeSelectorAdapter.ADD_CONTACT_AS_VCARD:
-                pickContacts(MultiPickContactsActivity.MODE_VCARD,
+                pickContacts(SelectRecipientsList.MODE_VCARD,
                         REQUEST_CODE_ATTACH_ADD_CONTACT_VCARD);
                 break;
 
@@ -3498,7 +3588,7 @@ public class ComposeMessageActivity extends Activity
             case REQUEST_CODE_ATTACH_ADD_CONTACT_INFO:
                 if (data != null) {
                     String newText = mWorkingMessage.getText() +
-                        data.getStringExtra(MultiPickContactsActivity.EXTRA_INFO);
+                            data.getStringExtra(SelectRecipientsList.EXTRA_INFO);
                     mWorkingMessage.setText(newText);
                 }
                 break;
@@ -3511,12 +3601,17 @@ public class ComposeMessageActivity extends Activity
                     if (mWorkingMessage != null) {
                         mWorkingMessage.removeAttachment(false);
                     }
-                    String extraVCard = data.getStringExtra(MultiPickContactsActivity.EXTRA_VCARD);
+                    String extraVCard = data.getStringExtra(SelectRecipientsList.EXTRA_VCARD);
                     if (extraVCard != null) {
                         Uri vcard = Uri.parse(extraVCard);
                         addVcard(vcard);
                     }
                 }
+                break;
+
+            case REQUEST_CODE_ADD_RECIPIENTS:
+                insertNumbersIntoRecipientsEditor(
+                        data.getStringArrayListExtra(SelectRecipientsList.EXTRA_RECIPIENTS));
                 break;
 
             default:
@@ -3549,6 +3644,18 @@ public class ComposeMessageActivity extends Activity
             mAttachmentEditor.update(mWorkingMessage);
         }
     };
+
+    private void insertNumbersIntoRecipientsEditor(final ArrayList<String> numbers) {
+        ContactList list = ContactList.getByNumbers(numbers, true);
+        ContactList existing = mRecipientsEditor.constructContactsFromInput(true);
+        for (Contact contact : existing) {
+            if (!contact.existsInDatabase()) {
+                list.add(contact);
+            }
+        }
+        mRecipientsEditor.setText(null);
+        mRecipientsEditor.populate(list);
+    }
 
     private void processPickResult(final Intent data) {
         // The EXTRA_PHONE_URIS stores the phone's urls that were selected by user in the
@@ -4013,36 +4120,10 @@ public class ComposeMessageActivity extends Activity
                 confirmSendMessageIfNeeded();
             }
         } else if ((v == mSendButtonSmsViewSec || v == mSendButtonMmsViewSec) &&
-                mShowTwoButtons && isPreparedForSending()) {
+            mShowTwoButtons && isPreparedForSending()) {
             confirmSendMessageIfNeeded(PhoneConstants.SUB2);
-        } else if ((v == mRecipientsPicker)) {
-            launchMultiplePhonePicker();
-        } else if ((v == mRecipientsPickerGroups)) {
-            launchContactGroupPicker();
-        }
-    }
-
-    private void launchContactGroupPicker() {
-        Intent intent = new Intent(this, MultiPickContactGroups.class);
-        try {
-            mIsPickingContact = true;
-            startActivityForResult(intent, REQUEST_CODE_PICK);
-        } catch (ActivityNotFoundException ex) {
-            Toast.makeText(this, R.string.contact_app_not_found, Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void launchMultiplePhonePicker() {
-        Intent intent = new Intent(INTENT_MULTI_PICK, Contacts.CONTENT_URI);
-        String exsitNumbers = mRecipientsEditor.getExsitNumbers();
-        if (!TextUtils.isEmpty(exsitNumbers)) {
-            intent.putExtra(Intents.EXTRA_PHONE_URIS, exsitNumbers);
-        }
-        try {
-            mIsPickingContact = true;
-            startActivityForResult(intent, REQUEST_CODE_PICK);
-        } catch (ActivityNotFoundException ex) {
-            Toast.makeText(this, R.string.contact_app_not_found, Toast.LENGTH_SHORT).show();
+        } else if (v == mRecipientsSelector) {
+            pickContacts(SelectRecipientsList.MODE_DEFAULT, REQUEST_CODE_ADD_RECIPIENTS);
         }
     }
 
@@ -4159,6 +4240,9 @@ public class ComposeMessageActivity extends Activity
      * Initialize all UI elements from resources.
      */
     private void initResourceRefs() {
+        mToolBar = (Toolbar) findViewById(R.id.toolbar);
+        setActionBar(mToolBar);
+
         mMsgListView = (MessageListView) findViewById(R.id.history);
         mMsgListView.setDivider(null);      // no divider so we look like IM conversation.
 
@@ -5280,12 +5364,6 @@ public class ComposeMessageActivity extends Activity
     }
 
     private class ModeCallback implements ListView.MultiChoiceModeListener {
-        private View mMultiSelectActionBarView;
-        private TextView mSelectedConvCount;
-        private ImageView mSelectedAll;
-        private boolean mHasSelectAll = false;
-        // build action bar with a spinner
-        private SelectionMenu mSelectionMenu;
         // need define variable to keep info of mms count, lock count, unlock
         // count.
         private int mMmsSelected = 0;
@@ -5411,42 +5489,12 @@ public class ComposeMessageActivity extends Activity
             mCheckedCount = 0;
             MenuInflater inflater = getMenuInflater();
             inflater.inflate(R.menu.compose_multi_select_menu, menu);
-            if (mMultiSelectActionBarView == null) {
-                mMultiSelectActionBarView = LayoutInflater.from(getContext())
-                        .inflate(R.layout.action_mode, null);
-            }
-            mode.setCustomView(mMultiSelectActionBarView);
-            mSelectionMenu = new SelectionMenu(getContext(),
-                    (Button) mMultiSelectActionBarView
-                            .findViewById(R.id.selection_menu),
-                    new PopupList.OnPopupItemClickListener() {
-                        @Override
-                        public boolean onPopupItemClick(int itemId) {
-                            if (itemId == SelectionMenu.SELECT_OR_DESELECT) {
-                                checkAll(!mHasSelectAll);
-                                mHasSelectAll = !mHasSelectAll;
-                                mSelectionMenu
-                                        .updateSelectAllMode(mHasSelectAll);
-                            }
-                            return true;
-                        }
-                    });
             return true;
         }
 
         @Override
         public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
             logMultiChoice("onPrepareActionMode");
-            if (mMultiSelectActionBarView == null) {
-                ViewGroup v = (ViewGroup) LayoutInflater
-                        .from(getContext())
-                        .inflate(
-                                R.layout.conversation_list_multi_select_actionbar,
-                                null);
-                mode.setCustomView(v);
-                mSelectedConvCount = (TextView) v
-                        .findViewById(R.id.selected_conv_count);
-            }
             return true;
         }
 
@@ -5544,6 +5592,9 @@ public class ComposeMessageActivity extends Activity
             case R.id.forward:
                 forwardMessage();
                 break;
+            case R.id.selection_toggle:
+                checkAll(!allItemsSelected());
+                return true;
             case R.id.delete:
                 confirmDeleteDialog(new MultiMessagesListener(), mCheckedCount != mUnlockedCount);
                 break;
@@ -5678,7 +5729,6 @@ public class ComposeMessageActivity extends Activity
 
         @Override
         public void onDestroyActionMode(ActionMode mode) {
-            mSelectionMenu.dismiss();
         }
 
         private void updateUnlockedCount(int lock, boolean checked) {
@@ -5720,70 +5770,38 @@ public class ComposeMessageActivity extends Activity
 
         private void customMenuVisibility(ActionMode mode, int checkedCount,
                 int position, boolean checked) {
+            Menu menu = mode.getMenu();
+
+            // all locked show unlock, other wise show lock.
+            menu.findItem(R.id.lock).setTitle(getString(
+                        mUnlockedCount == 0 ? R.string.menu_lock : R.string.menu_unlock));
+
+            boolean noMmsSelected = mMmsSelected == 0;
+            menu.findItem(R.id.copy_to_sim).setVisible(noMmsSelected);
+            menu.findItem(R.id.copy).setVisible(noMmsSelected);
+
             if (checkedCount > 1) {
                 // no detail
-                mode.getMenu().findItem(R.id.detail).setVisible(false);
+                menu.findItem(R.id.detail).setVisible(false);
                 // no share
-                mode.getMenu().findItem(R.id.share).setVisible(false);
+                menu.findItem(R.id.share).setVisible(false);
                 // no save attachment
-                mode.getMenu().findItem(R.id.save_attachment).setVisible(false);
-                // all locked show unlock, other wise show lock.
-                if (mUnlockedCount == 0) {
-                    mode.getMenu()
-                            .findItem(R.id.lock)
-                            .setTitle(
-                                    getContext()
-                                            .getString(R.string.menu_unlock));
-                } else {
-                    mode.getMenu()
-                            .findItem(R.id.lock)
-                            .setTitle(
-                                    getContext().getString(R.string.menu_lock));
-                }
-                if (mMmsSelected > 0) {
-                    mode.getMenu().findItem(R.id.forward).setVisible(false);
-                    mode.getMenu().findItem(R.id.copy_to_sim).setVisible(false);
-                    mode.getMenu().findItem(R.id.copy).setVisible(false);
-                } else {
-                    mode.getMenu().findItem(R.id.forward).setVisible(true);
-                    mode.getMenu().findItem(R.id.copy_to_sim).setVisible(true);
-                    mode.getMenu().findItem(R.id.copy).setVisible(true);
-                }
+                menu.findItem(R.id.save_attachment).setVisible(false);
+
+                menu.findItem(R.id.forward).setVisible(noMmsSelected);
             } else {
-                mode.getMenu().findItem(R.id.detail).setVisible(true);
-                mode.getMenu().findItem(R.id.save_attachment).setVisible(false);
+                int pos = checked ? position : mMsgListView.getCheckedPosition();
+
+                menu.findItem(R.id.detail).setVisible(true);
+                menu.findItem(R.id.save_attachment).setVisible(
+                        !noMmsSelected && isAttachmentSaveable(pos));
 
                 Intent shareIntent = getShareMessageIntent("");
-                int numShareTargets =
-                        IntentUtils.getTargetActivityCount(getContext(), shareIntent,
-                                getContext().getApplicationContext().getPackageName());
-                mode.getMenu().findItem(R.id.share).setVisible(mMmsSelected == 0
-                        && numShareTargets > 0);
+                int numShareTargets = IntentUtils.getTargetActivityCount(getContext(),
+                        shareIntent, getPackageName());
+                menu.findItem(R.id.share).setVisible(noMmsSelected && numShareTargets > 0);
 
-                if (mUnlockedCount == 0) {
-                    mode.getMenu()
-                            .findItem(R.id.lock)
-                            .setTitle(
-                                    getContext()
-                                            .getString(R.string.menu_unlock));
-                } else {
-                    mode.getMenu()
-                            .findItem(R.id.lock)
-                            .setTitle(
-                                    getContext().getString(R.string.menu_lock));
-                }
-
-                mode.getMenu().findItem(R.id.forward).setVisible(true);
-                if (mMmsSelected > 0) {
-                    mode.getMenu().findItem(R.id.copy_to_sim).setVisible(false);
-                    mode.getMenu().findItem(R.id.copy).setVisible(false);
-                    int pos = checked ? position : mMsgListView.getCheckedPosition();
-                    mode.getMenu().findItem(R.id.save_attachment)
-                            .setVisible(isAttachmentSaveable(pos));
-                } else {
-                    mode.getMenu().findItem(R.id.copy_to_sim).setVisible(true);
-                    mode.getMenu().findItem(R.id.copy).setVisible(true);
-                }
+                menu.findItem(R.id.forward).setVisible(true);
             }
         }
 
@@ -5796,14 +5814,14 @@ public class ComposeMessageActivity extends Activity
             mCheckedCount = getListView().getCheckedItemCount();
             updateStatics(position, checked);
             customMenuVisibility(mode, mCheckedCount, position, checked);
-            mSelectionMenu.setTitle(getApplicationContext().getString(
-                    R.string.selected_count, mCheckedCount));
-            if (getListView().getCount() == mCheckedCount) {
-                mHasSelectAll = true;
-            } else {
-                mHasSelectAll = false;
-            }
-            mSelectionMenu.updateSelectAllMode(mHasSelectAll);
+            mode.setTitle(getString(R.string.selected_count, mCheckedCount));
+
+            mode.getMenu().findItem(R.id.selection_toggle).setTitle(getString(
+                    allItemsSelected() ? R.string.deselected_all : R.string.selected_all));
+        }
+
+        private boolean allItemsSelected() {
+            return getListView().getCount() == mCheckedCount;
         }
     }
 
