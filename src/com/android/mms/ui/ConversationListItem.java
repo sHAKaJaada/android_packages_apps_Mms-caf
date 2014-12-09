@@ -270,7 +270,7 @@ public class ConversationListItem extends RelativeLayout implements Contact.Upda
         // Register for updates in changes of any of the contacts in this conversation.
         ContactList contacts = conversation.getRecipients();
 
-        // Location 
+        // Location
         if (MoKeeUtils.isSupportLanguage(true)) {
             mLocationView.setText(PhoneLocation.getCityFromPhone((CharSequence)contacts.get(0).getNumber()));
         }
