@@ -401,7 +401,7 @@ public class MessageListItem extends ZoomMessageListItem implements
     private void updateAvatarView(String addr, boolean isSelf) {
         Drawable avatarDrawable;
         if (isSelf || !TextUtils.isEmpty(addr)) {
-            Contact contact = isSelf ? Contact.getMe(false) : Contact.get(addr, false);
+            Contact contact = isSelf ? Contact.getMe(false) : Contact.get(addr, true);
             contact.bindAvatar(mAvatar);
 
             if (isSelf) {
@@ -430,6 +430,7 @@ public class MessageListItem extends ZoomMessageListItem implements
             mDownloadButton.setVisibility(View.GONE);
             mDownloading.setVisibility(View.GONE);
         }
+
         // Since the message text should be concatenated with the sender's
         // address(or name), I have to display it here instead of
         // displaying it by the Presenter.
@@ -607,7 +608,7 @@ public class MessageListItem extends ZoomMessageListItem implements
                 intent.putExtra(CANCEL_URI, mMessageItem.mMessageUri.toString());
                 mContext.startService(intent);
                 DownloadManager.getInstance().markState(mMessageItem.mMessageUri,
-                        DownloadManager.STATE_UNSTARTED);
+                        DownloadManager.STATE_TRANSIENT_FAILURE);
             }
         }
     };
@@ -751,9 +752,7 @@ public class MessageListItem extends ZoomMessageListItem implements
     }
 
     private boolean isSimCardMessage() {
-        return mContext instanceof ManageSimMessages
-                || (mContext instanceof ManageMultiSelectAction &&
-                mManageMode == MessageUtils.SIM_MESSAGE_MODE);
+        return mContext instanceof ManageSimMessages;
     }
 
     public void setManageSelectMode(int manageMode) {
@@ -770,19 +769,7 @@ public class MessageListItem extends ZoomMessageListItem implements
                 // Set call-back for the 'Play' button.
                 mSlideShowButton.setOnClickListener(this);
                 mSlideShowButton.setVisibility(View.VISIBLE);
-                setLongClickable(true);
-
-                // When we show the mSlideShowButton, this list item's onItemClickListener doesn't
-                // get called. (It gets set in ComposeMessageActivity:
-                // mMsgListView.setOnItemClickListener) Here we explicitly set the item's
-                // onClickListener. It allows the item to respond to embedded html links and at the
-                // same time, allows the slide show play button to work.
-                setOnClickListener(new OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        onMessageListItemClick();
-                    }
-                });
+                setLongClickable(false);
                 break;
             default:
                 mSlideShowButton.setVisibility(View.GONE);
@@ -885,7 +872,7 @@ public class MessageListItem extends ZoomMessageListItem implements
         // we show the icon if the read report or delivery report setting was set when the
         // message was sent. Showing the icon tells the user there's more information
         // by selecting the "View report" menu.
-        if (msgItem.mDeliveryStatus == MessageItem.DeliveryStatus.INFO || msgItem.mReadReport
+        if (msgItem.mDeliveryStatus == MessageItem.DeliveryStatus.INFO
                 || (msgItem.isMms() && !msgItem.isSending() &&
                         msgItem.mDeliveryStatus == MessageItem.DeliveryStatus.PENDING)) {
             mDetailsIndicator.setImageResource(R.drawable.ic_sms_mms_details);
@@ -893,6 +880,9 @@ public class MessageListItem extends ZoomMessageListItem implements
         } else if (msgItem.isMms() && !msgItem.isSending() &&
                 msgItem.mDeliveryStatus == MessageItem.DeliveryStatus.RECEIVED) {
             mDetailsIndicator.setImageResource(R.drawable.ic_sms_mms_delivered);
+            mDetailsIndicator.setVisibility(View.VISIBLE);
+        } else if (msgItem.mReadReport) {
+            mDetailsIndicator.setImageResource(R.drawable.ic_sms_mms_details);
             mDetailsIndicator.setVisibility(View.VISIBLE);
         } else {
             mDetailsIndicator.setVisibility(View.GONE);
