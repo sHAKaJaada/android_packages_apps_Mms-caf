@@ -38,10 +38,10 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
 import android.widget.Checkable;
-import android.widget.QuickContactBadge;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
+import com.android.contacts.common.widget.CheckableQuickContactBadge;
 import com.android.mms.LogTag;
 import com.android.mms.R;
 import com.android.mms.data.Contact;
@@ -65,7 +65,7 @@ public class ConversationListItem extends RelativeLayout implements Contact.Upda
     private TextView mLocationView;
     private View mAttachmentView;
     private View mErrorIndicator;
-    private QuickContactBadge mAvatarView;
+    private CheckableQuickContactBadge mAvatarView;
 
     static private RoundedBitmapDrawable sDefaultContactImage;
 
@@ -104,7 +104,7 @@ public class ConversationListItem extends RelativeLayout implements Contact.Upda
         mLocationView = (TextView) findViewById(R.id.location);
         mAttachmentView = findViewById(R.id.attachment);
         mErrorIndicator = findViewById(R.id.error);
-        mAvatarView = (QuickContactBadge) findViewById(R.id.avatar);
+        mAvatarView = (CheckableQuickContactBadge) findViewById(R.id.avatar);
         mAvatarView.setOverlay(null);
     }
 
@@ -244,6 +244,8 @@ public class ConversationListItem extends RelativeLayout implements Contact.Upda
 
     public final void bind(Context context, final Conversation conversation) {
         //if (DEBUG) Log.v(TAG, "bind()");
+        boolean sameItem = mConversation != null
+                && mConversation.getThreadId() == conversation.getThreadId();
 
         mConversation = conversation;
 
@@ -294,6 +296,7 @@ public class ConversationListItem extends RelativeLayout implements Contact.Upda
         mErrorIndicator.setVisibility(hasError ? VISIBLE : GONE);
 
         updateAvatarView();
+        mAvatarView.setChecked(isChecked(), sameItem);
     }
 
     public final void unbind() {
@@ -304,15 +307,19 @@ public class ConversationListItem extends RelativeLayout implements Contact.Upda
         Contact.removeListener(this);
     }
 
+    @Override
     public void setChecked(boolean checked) {
         mConversation.setIsChecked(checked);
+        mAvatarView.setChecked(isChecked(), true);
         setActivated(checked);
     }
 
+    @Override
     public boolean isChecked() {
         return mConversation.isChecked();
     }
 
+    @Override
     public void toggle() {
         mConversation.setIsChecked(!mConversation.isChecked());
     }
