@@ -134,6 +134,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.Toolbar;
 import android.widget.Button;
+import android.view.Window;
 
 import com.android.contacts.common.util.MaterialColorMapUtils;
 import com.android.contacts.common.util.MaterialColorMapUtils.MaterialPalette;
@@ -470,6 +471,7 @@ public class ComposeMessageActivity extends Activity
     private final static int REPLACE_ATTACHMEN_MASK = 1 << 16;
 
     private boolean mShowTwoButtons = false;
+    private Window mNavBarColor;
 
     private int mAccentColor = 0;
     private int mStatusBarColor = 0;
@@ -1873,6 +1875,7 @@ public class ComposeMessageActivity extends Activity
             }
         }
         mDebugRecipients = list.serialize();
+        mNavBarColor = getWindow();
 
         if (cnt > 0 && !mAccentColorLoaded && !mLoadingAccentColor) {
             final Contact contact = list.get(0);
@@ -1881,6 +1884,7 @@ public class ComposeMessageActivity extends Activity
             if (color != 0) {
                 mAccentColorLoaded = true;
                 updateColorPalette(color);
+                mNavBarColor.setNavigationBarColor(color);
             } else {
                 mLoadingAccentColor = true;
                 new AsyncTask<Void, Void, Integer>() {
@@ -1895,6 +1899,7 @@ public class ComposeMessageActivity extends Activity
                             mLoadingAccentColor = false;
                             mAccentColorLoaded = true;
                             updateColorPalette(color);
+                            mNavBarColor.setNavigationBarColor(color);
                         }
                     }
                 }.execute();
