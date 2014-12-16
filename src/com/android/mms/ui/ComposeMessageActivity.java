@@ -1875,7 +1875,6 @@ public class ComposeMessageActivity extends Activity
             }
         }
         mDebugRecipients = list.serialize();
-        mNavBarColor = getWindow();
 
         if (cnt > 0 && !mAccentColorLoaded && !mLoadingAccentColor) {
             final Contact contact = list.get(0);
@@ -1884,7 +1883,6 @@ public class ComposeMessageActivity extends Activity
             if (color != 0) {
                 mAccentColorLoaded = true;
                 updateColorPalette(color);
-                mNavBarColor.setNavigationBarColor(color);
             } else {
                 mLoadingAccentColor = true;
                 new AsyncTask<Void, Void, Integer>() {
@@ -1899,7 +1897,6 @@ public class ComposeMessageActivity extends Activity
                             mLoadingAccentColor = false;
                             mAccentColorLoaded = true;
                             updateColorPalette(color);
-                            mNavBarColor.setNavigationBarColor(color);
                         }
                     }
                 }.execute();
@@ -1956,6 +1953,7 @@ public class ComposeMessageActivity extends Activity
 
     private void updateThemeColors(int accentColor, int statusBarColor) {
         final ColorDrawable background = new ColorDrawable();
+        mNavBarColor = getWindow();
         final ObjectAnimator backgroundAnimation = ObjectAnimator.ofInt(background,
                 "color", mAccentColor, accentColor);
         final ObjectAnimator statusBarAnimation = ObjectAnimator.ofInt(getWindow(),
@@ -1964,6 +1962,7 @@ public class ComposeMessageActivity extends Activity
         backgroundAnimation.setEvaluator(new ArgbEvaluator());
         statusBarAnimation.setEvaluator(new ArgbEvaluator());
         findViewById(R.id.header).setBackground(background);
+        mNavBarColor.setNavigationBarColor(accentColor);
 
         final AnimatorSet animation = new AnimatorSet();
         animation.playTogether(backgroundAnimation, statusBarAnimation);
