@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Copyright (C) 2012-2014 The MoKee OpenSource Project
+<!-- Copyright (C) 2012-2015 The MoKee OpenSource Project
 
      Licensed under the Apache License, Version 2.0 (the "License");
      you may not use this file except in compliance with the License.
@@ -20,5 +20,15 @@
     <!-- Direct Call -->
     <string name="direct_call_title">Direct Call</string>
     <string name="direct_call_summary">Picking up the phone calls the current contact</string>
+
+    <!-- Message Font size -->
+    <string name="pref_title_mms_message_font_size">Message font size</string>
+    <string name="pref_summary_mms_message_font_size">Change font size of message view</string>
+    <string name="pref_dialogtitle_mms_message_font_size">Select font size</string>
+
+    <!-- Insert contact information -->
+    <string name="menu_insert_contact_info">Insert contact info</string>
+    <string name="cannot_find_contact">Can\'t insert information of the chosen contact</string>
+    <string name="insert_contact_info_positive_button">Insert</string>
 
 </resources>
